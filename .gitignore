@@ -1,0 +1,6 @@
+*.swp
+*.pyc
+.env/*
+datasets/
+__pycache__
+.ipynb_checkpoints
