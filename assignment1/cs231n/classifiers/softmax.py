@@ -72,7 +72,9 @@ def softmax_loss_vectorized(W, X, y, reg):
   loss = np.sum(-np.log(np.choose(y, softmax.T)))
   loss = loss / num_train + reg * np.sum(W * W)
 
-  # One hot encode labels
+  # https://eli.thegreenplace.net/2016/the-softmax-function-and-its-derivative
+  # The derivate dL/dW = dL/dS * dS/dW where S = softmax
+  # One hot encode labels (Kronecker delta - 1 where index = target, 0 otherwise)
   one_hot_labels = np.zeros(softmax.shape)
   one_hot_labels[train_indices, y] = 1
 
