@@ -1,5 +1,4 @@
 from __future__ import print_function
-from past.builtins import xrange
 
 import matplotlib
 import numpy as np
@@ -44,13 +43,13 @@ def extract_features(imgs, feature_fns, verbose=False):
   imgs_features[0] = np.hstack(first_image_features).T
 
   # Extract features for the rest of the images.
-  for i in xrange(1, num_images):
+  for i in range(1, num_images):
     idx = 0
     for feature_fn, feature_dim in zip(feature_fns, feature_dims):
       next_idx = idx + feature_dim
       imgs_features[i, idx:next_idx] = feature_fn(imgs[i].squeeze())
       idx = next_idx
-    if verbose and i % 1000 == 0:
+    if verbose and i % 5000 == 0:
       print('Done extracting features for %d / %d images' % (i, num_images))
 
   return imgs_features
@@ -64,29 +63,29 @@ def rgb2gray(rgb):
 
     Returns:
       gray : grayscale image
-  
+
   """
   return np.dot(rgb[...,:3], [0.299, 0.587, 0.144])
 
 
 def hog_feature(im):
   """Compute Histogram of Gradient (HOG) feature for an image
-  
+
        Modified from skimage.feature.hog
        http://pydoc.net/Python/scikits-image/0.4.2/skimage.feature.hog
-     
+
      Reference:
        Histograms of Oriented Gradients for Human Detection
        Navneet Dalal and Bill Triggs, CVPR 2005
-     
+
     Parameters:
       im : an input grayscale or rgb image
-      
+
     Returns:
       feat: Histogram of Gradient (HOG) feature
-    
+
   """
-  
+
   # convert rgb to grayscale if needed
   if im.ndim == 3:
     image = rgb2gray(im)
@@ -118,8 +117,8 @@ def hog_feature(im):
     # select magnitudes for those orientations
     cond2 = temp_ori > 0
     temp_mag = np.where(cond2, grad_mag, 0)
-    orientation_histogram[:,:,i] = uniform_filter(temp_mag, size=(cx, cy))[cx/2::cx, cy/2::cy].T
-  
+    orientation_histogram[:,:,i] = uniform_filter(temp_mag, size=(cx, cy))[int(cx/2)::cx, int(cy/2)::cy].T
+
   return orientation_histogram.ravel()
 
 
