@@ -50,7 +50,7 @@ class TwoLayerNet(object):
     # ReLU
     return np.maximum(np.zeros(X.shape), X)
 
-  def loss(self, X, y=None, reg=0.0, dropout_prob=0.0):
+  def loss(self, X, y=None, reg=0.0, idropout_prob=1.0):
     """
     Compute the loss and gradients for a two layer fully connected neural
     network.
@@ -62,6 +62,7 @@ class TwoLayerNet(object):
       is not passed then we only return scores, and if it is passed then we
       instead return the loss and gradients.
     - reg: Regularization strength.
+    - idropout_prob: Inverted dropout probability. Higher = less dropout
 
     Returns:
     If y is None, return a matrix scores of shape (N, C) where scores[i, c] is
@@ -80,8 +81,9 @@ class TwoLayerNet(object):
 
     # Compute the forward pass.
     L1 = self.activate(np.dot(X, W1) + b1) # (N, H)
-    if dropout_prob > 0:
-      L1 *= (np.random.rand(*L1.shape) < dropout_prob) / dropout_prob # first dropout mask. /p for scaling
+    if idropout_prob > 0 and idropout_prob < 1:
+       # Dropout mask. /p for scaling
+      L1 *= ((np.random.rand(*L1.shape) < idropout_prob) / idropout_prob)
     scores = np.dot(L1, W2) + b2 # (N, C)
 
     # If the targets are not given then jump out, we're done
@@ -129,7 +131,7 @@ class TwoLayerNet(object):
 
   def train(self, X, y, X_val, y_val,
             learning_rate=1e-3, learning_rate_decay=0.95,
-            reg=5e-6, dropout_prob=0.0, num_iters=100,
+            reg=5e-6, idropout_prob=1.0, num_iters=100,
             batch_size=200, verbose=False):
     """
     Train this neural network using stochastic gradient descent.
@@ -144,7 +146,7 @@ class TwoLayerNet(object):
     - learning_rate_decay: Scalar giving factor used to decay the learning rate
       after each epoch.
     - reg: Scalar giving regularization strength.
-    - dropout_prob: probability of setting values to 0. Where 1 = all and 0 = none.
+    - idropout_prob: Inverted dropout probability. Higher = less dropout
     - num_iters: Number of steps to take when optimizing.
     - batch_size: Number of training examples to use per step.
     - verbose: boolean; if true print progress during optimization.
@@ -165,7 +167,7 @@ class TwoLayerNet(object):
       y_batch = y[batch_indices]
 
       # Compute loss and gradients using the current minibatch
-      loss, grads = self.loss(X_batch, y=y_batch, reg=reg, dropout_prob=dropout_prob)
+      loss, grads = self.loss(X_batch, y=y_batch, reg=reg, idropout_prob=idropout_prob)
       loss_history.append(loss)
 
       # Update parameters of the network - weights and biases
