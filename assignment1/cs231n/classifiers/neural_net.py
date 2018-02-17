@@ -37,9 +37,9 @@ class TwoLayerNet(object):
     - output_size: The number of classes C.
     """
     self.params = {}
-    self.params['W1'] = np.random.randn(input_size, hidden_size) * np.sqrt(2.0 / (input_size * hidden_size))
+    self.params['W1'] = std * np.random.randn(input_size, hidden_size)
     self.params['b1'] = np.zeros(hidden_size)
-    self.params['W2'] = np.random.randn(hidden_size, output_size) * np.sqrt(2.0 / (input_size * hidden_size))
+    self.params['W2'] = std * np.random.randn(hidden_size, output_size)
     self.params['b2'] = np.zeros(output_size)
 
   def softmax(self, scores):
