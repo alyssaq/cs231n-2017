@@ -58,7 +58,7 @@ Note that every time you want to work on the assignment, you should run `source 
 Get the code as a zip file [here](http://cs231n.stanford.edu/assignments/2017/spring1617_assignment2.zip).
 
 ### Download data:
-Once you have the starter code (regardless of which method you choose above), you will need to download the CIFAR-10 dataset.
+Once you have the starter code (regardless of which method you choose above), you will need to download the [CIFAR-10 dataset](http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz).
 Run the following from the `assignment2` directory:
 
 ```bash
