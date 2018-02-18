@@ -46,8 +46,13 @@ class TwoLayerNet(object):
     # Pass scores through softmax and returns with same shape as scores
     return np.exp(scores) / np.sum(np.exp(scores), axis=1, keepdims=True)
 
-  def activate(self, X):
+  def activate(self, X, derive=False):
     # ReLU
+    if derive:
+      mask = np.zeros(X.shape)
+      mask[X > 0] = 1
+      return mask
+
     return np.maximum(np.zeros(X.shape), X)
 
   def loss(self, X, y=None, reg=0.0, idropout_prob=1.0):
@@ -121,8 +126,9 @@ class TwoLayerNet(object):
     grads['W2'] += reg * W2 * 2
 
     # Derivative of L1 based on derivate of softmax scores
-    dL1 = np.dot(dscores, W2.T)
-    dL1[L1 <= 0] = 0
+    # Note: Instead of mulitplying by L1's activation derivative,
+    #       since we are using ReLU, could do dL1[L1 <= 0] = 0
+    dL1 = np.dot(dscores, W2.T) * self.activate(L1, derive=True)
     grads['W1'] = np.dot(X.T, dL1)
     grads['b1'] = np.sum(dL1, axis = 0)
     grads['W1'] += reg * W1 * 2
