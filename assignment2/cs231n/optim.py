@@ -60,19 +60,36 @@ def sgd_momentum(w, dw, config=None):
     config.setdefault('momentum', 0.9)
     v = config.get('velocity', np.zeros_like(w))
 
-    next_w = None
-    ###########################################################################
-    # TODO: Implement the momentum update formula. Store the updated value in #
-    # the next_w variable. You should also use and update the velocity v.     #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    v = config['momentum'] * v - config['learning_rate'] * dw
+    w += v
+
     config['velocity'] = v
+    return w, config
 
-    return next_w, config
 
+def sgd_nesterov(w, dw, config=None):
+    """
+    Performs stochastic gradient descent with Nesterov momentum.
+
+    config format:
+    - learning_rate: Scalar learning rate.
+    - momentum: Scalar between 0 and 1 giving the momentum value.
+      Setting momentum = 0 reduces to sgd.
+    - velocity: A numpy array of the same shape as w and dw used to store a
+      moving average of the gradients.
+    """
+    if config is None: config = {}
+    config.setdefault('learning_rate', 1e-2)
+    config.setdefault('momentum', 0.95)
+    v = config.get('velocity', np.zeros_like(w))
+
+    mu = config['momentum']
+    v_prev = v # back this up
+    v = mu * v - config['learning_rate'] * dw # velocity update stays the same
+    w += -mu * v_prev + (1 + mu) * v # position update changes form
+
+    config['velocity'] = v
+    return w, config
 
 
 def rmsprop(x, dx, config=None):
@@ -93,17 +110,11 @@ def rmsprop(x, dx, config=None):
     config.setdefault('epsilon', 1e-8)
     config.setdefault('cache', np.zeros_like(x))
 
-    next_x = None
-    ###########################################################################
-    # TODO: Implement the RMSprop update formula, storing the next value of x #
-    # in the next_x variable. Don't forget to update cache value stored in    #
-    # config['cache'].                                                        #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    decay_rate = config['decay_rate']
+    cache = decay_rate * config['cache'] + (1 - decay_rate) * dx**2
+    next_x = x - config['learning_rate'] * dx / (np.sqrt(cache) + config['epsilon'])
 
+    config['cache'] = cache
     return next_x, config
 
 
@@ -130,15 +141,17 @@ def adam(x, dx, config=None):
     config.setdefault('v', np.zeros_like(x))
     config.setdefault('t', 1)
 
-    next_x = None
-    ###########################################################################
-    # TODO: Implement the Adam update formula, storing the next value of x in #
-    # the next_x variable. Don't forget to update the m, v, and t variables   #
-    # stored in config.                                                       #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    beta1 = config['beta1']
+    beta2 = config['beta2']
+    t = config['t']
 
+    m = beta1 * config['m'] + (1 - beta1) * dx
+    mt = m / (1 - beta1**t)
+    v = beta2 * config['v'] + (1 - beta2) * (dx**2)
+    vt = v / (1 - beta2**t)
+    next_x = x - config['learning_rate'] * mt / (np.sqrt(vt) + config['epsilon'])
+
+    config['m'] = m
+    config['v'] = v
+    config['t'] = t + 1
     return next_x, config
