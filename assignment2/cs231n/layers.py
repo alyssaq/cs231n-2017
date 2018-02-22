@@ -278,25 +278,10 @@ def dropout_forward(x, dropout_param):
         np.random.seed(dropout_param['seed'])
 
     mask = None
-    out = None
-
-    if mode == 'train':
-        #######################################################################
-        # TODO: Implement training phase forward pass for inverted dropout.   #
-        # Store the dropout mask in the mask variable.                        #
-        #######################################################################
-        pass
-        #######################################################################
-        #                           END OF YOUR CODE                          #
-        #######################################################################
-    elif mode == 'test':
-        #######################################################################
-        # TODO: Implement the test phase forward pass for inverted dropout.   #
-        #######################################################################
-        pass
-        #######################################################################
-        #                            END OF YOUR CODE                         #
-        #######################################################################
+    out = x
+    if mode == 'train' and p > 0:
+        mask = (np.random.rand(*x.shape) < p) / p
+        out = x * mask
 
     cache = (dropout_param, mask)
     out = out.astype(x.dtype, copy=False)
@@ -313,19 +298,12 @@ def dropout_backward(dout, cache):
     - cache: (dropout_param, mask) from dropout_forward.
     """
     dropout_param, mask = cache
-    mode = dropout_param['mode']
+    p, mode = dropout_param['p'], dropout_param['mode']
 
-    dx = None
-    if mode == 'train':
-        #######################################################################
-        # TODO: Implement training phase backward pass for inverted dropout   #
-        #######################################################################
-        pass
-        #######################################################################
-        #                          END OF YOUR CODE                           #
-        #######################################################################
-    elif mode == 'test':
-        dx = dout
+    dx = dout
+    if mode == 'train' and p > 0:
+        dx = dout * mask
+
     return dx
 
 

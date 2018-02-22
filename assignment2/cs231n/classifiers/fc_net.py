@@ -221,7 +221,6 @@ class FullyConnectedNet(object):
             for bn_param in self.bn_params:
                 bn_param['mode'] = mode
 
-        scores = None
         ############################################################################
         # Implement the forward pass for the fully-connected net, computing        #
         # the class scores for X and storing them in the scores variable.          #
@@ -237,6 +236,7 @@ class FullyConnectedNet(object):
         params = self.params
         scores = X.reshape(X.shape[0], -1)
         caches = []
+        dropout_caches = []
 
         for i in range(self.num_layers):
             layeri = str(i + 1)
@@ -253,6 +253,10 @@ class FullyConnectedNet(object):
                     scores, cache = affine_batchnorm_relu_forward(scores, weights, bias, gammas, betas, bn_params)
                 else:
                     scores, cache = affine_relu_forward(scores, weights, bias)
+
+                if self.use_dropout:
+                    scores, dropout_cache = dropout_forward(scores, self.dropout_param)
+                    dropout_caches.append(dropout_cache)
 
             caches.append(cache)
 
@@ -286,6 +290,10 @@ class FullyConnectedNet(object):
             if i == self.last_layer_idx:
                 dh, dweights, dbias = affine_backward(dh, cache)
             else:
+                if self.use_dropout:
+                    p, mask = dropout_caches[i]
+                    dh = dropout_backward(dh, dropout_caches[i])
+
                 if self.use_batchnorm:
                     dh, dweights, dbias, dgamma, dbeta = affine_batchnorm_relu_backward(dh, cache)
                     grads['gamma' + layeri] = dgamma
