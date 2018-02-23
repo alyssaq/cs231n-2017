@@ -539,7 +539,7 @@ def softmax_loss(x, y):
     loss = -np.sum(np.log(np.choose(y, softmax.T))) / N
 
     # Calculate derivative of loss with respect to the input x
-    one_hot_encoded = np.zeros(x.shape)
+    one_hot_encoded = np.zeros_like(x)
     one_hot_encoded[np.arange(N), y] = 1
     dx = (softmax - one_hot_encoded) / N
     return loss, dx
