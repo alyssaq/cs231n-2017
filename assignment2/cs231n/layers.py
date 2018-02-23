@@ -527,13 +527,19 @@ def softmax_loss(x, y):
     - dx: Gradient of the loss with respect to x
     """
     N = x.shape[0]
-    shifted_logits = x - np.max(x, axis=1, keepdims=True)
-    Z = np.sum(np.exp(shifted_logits), axis=1, keepdims=True)
-    log_probs = shifted_logits - np.log(Z)
-    loss = -np.sum(np.choose(y, log_probs.T)) / N
+    # Taking exponentials may result in large numbers and diving by it could
+    # be numerically unstable. Normalize by adding a log constant.
+    # logC=−max x_j. So highest value in each sample = 0.
+    normx = x - np.max(x, axis=1, keepdims=True)
 
-    probs = np.exp(log_probs)
-    dx = probs.copy()
-    dx[np.arange(N), y] -= 1
-    dx /= N
+    exps = np.exp(normx)
+    deno = np.sum(exps, axis=1, keepdims=True)
+    softmax = exps / deno
+
+    loss = -np.sum(np.log(np.choose(y, softmax.T))) / N
+
+    # Calculate derivative of loss with respect to the input x
+    one_hot_encoded = np.zeros(x.shape)
+    one_hot_encoded[np.arange(N), y] = 1
+    dx = (softmax - one_hot_encoded) / N
     return loss, dx
