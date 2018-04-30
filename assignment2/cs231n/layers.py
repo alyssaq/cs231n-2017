@@ -330,15 +330,27 @@ def conv_forward_naive(x, w, b, conv_param):
       W' = 1 + (W + 2 * pad - WW) / stride
     - cache: (x, w, b, conv_param)
     """
-    out = None
-    ###########################################################################
-    # TODO: Implement the convolutional forward pass.                         #
-    # Hint: you can use the function np.pad for padding.                      #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    F, C, HH, WW = w.shape
+    pad = conv_param['pad']
+    stride = conv_param['stride']
+
+    # Pad the (w,h) tensor input
+    X = np.pad(x, ((0, 0), (0, 0), (pad, pad), (pad, pad)), 'constant', constant_values=0)
+    N, C, H, W = X.shape
+
+    out_H = int(1 + (H - HH) / stride)
+    out_W = int(1 + (W - WW) / stride)
+    out = np.zeros((N, F, out_H, out_W))
+
+    for fi, weights in enumerate(w):
+        for fh in range(out_H):
+            start_h = fh * stride
+            for fw in range(out_W):
+                start_w = fw * stride
+                filter_values = X[:, :, start_h:start_h + HH, start_w:start_w + WW] * weights
+                # Each sample is a sum across all values in the filter
+                out[:, fi, fh, fw] = np.sum(filter_values.reshape(N, -1), axis=1) + b[fi]
+
     cache = (x, w, b, conv_param)
     return out, cache
 
