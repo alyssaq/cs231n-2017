@@ -431,23 +431,16 @@ def max_pool_forward_naive(x, pool_param):
 
     out = np.zeros((N, C, out_W, out_H))
     mask = np.zeros((N, C, H, W), dtype=int)
-    max_indices = np.zeros((N, C, out_W, out_H), dtype=int)
+    max_indices = np.zeros((out_H, out_W, N * C), dtype=int)
     for h in range(out_H):
         start_h = h * stride
         for w in range(out_W):
             start_w = w * stride
             window = x[:, :, start_h:start_h + pool_H, start_w:start_w + pool_W]
-
-            ind = np.argmax(window.reshape((N*C, pool_H*pool_W)), axis=1).reshape((N, C))
-
-            pool_ind = np.unravel_index(ind, (pool_H, pool_W))
-            mask[:, :, start_h:start_h + pool_H, start_w:start_w + pool_W][:, :, pool_ind[0], pool_ind[1]] = 1
-            #print(mask)
-
-            max_indices[:, :, h, w] = np.argmax(window.reshape(N*C, pool_H*pool_W), axis=1).reshape((N, C))
+            max_indices[h, w] = np.argmax(window.reshape(N*C, pool_H*pool_W), axis=1)
             out[:, :, h, w] = np.max(window, axis=(2, 3)) # Keep (N, C). Max across all windows (h, w)
 
-    # Save max_indices for use in backprop. Same shape as out
+    # Save max_indices for use in backprop.
     pool_param['max_indices'] = max_indices
     cache = (x, pool_param)
     return out, cache
@@ -480,7 +473,7 @@ def max_pool_backward_naive(dout, cache):
             start_w = w * stride
 
             dx_reshaped = np.zeros((N*C, pool_H*pool_W))
-            dx_reshaped[range(N*C), max_indices[:, :, h, w].reshape(N*C)] = dout[:, :, h, w].reshape(N*C)
+            dx_reshaped[range(N*C), max_indices[h, w]] = dout[:, :, h, w].reshape(N*C)
             dx[:, :, start_h:start_h + pool_H, start_w:start_w + pool_W] = dx_reshaped.reshape(N, C, pool_H, pool_W)
 
     return dx
