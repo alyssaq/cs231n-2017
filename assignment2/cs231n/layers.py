@@ -418,7 +418,7 @@ def max_pool_forward_naive(x, pool_param):
       - 'stride': The distance between adjacent pooling regions
 
     Returns a tuple of:
-    - out: Output data of shape (N, C, out_W, out_H)
+    - out: Output data of shape (N, C, out_H, out_W)
     - cache: (x, pool_param)
     """
 
@@ -429,7 +429,7 @@ def max_pool_forward_naive(x, pool_param):
     out_W = int((W - pool_W) / stride + 1)
     out_H = int((H - pool_H) / stride + 1)
 
-    out = np.zeros((N, C, out_W, out_H))
+    out = np.zeros((N, C, out_H, out_W))
     mask = np.zeros((N, C, H, W), dtype=int)
     max_indices = np.zeros((out_H, out_W, N * C), dtype=int)
     for h in range(out_H):
