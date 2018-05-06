@@ -371,11 +371,11 @@ def conv_backward_naive(dout, cache):
     db = np.sum(dout, axis=(0, 2, 3))
 
     dw = np.zeros((F, C, fH, fW))
-    dout_reshaped = dout.transpose((1, 0, 2, 3)).reshape(F, N, out_H, out_W)
-    for c in range(0, C):
-        for ih in range(0, fH):
-            for iw in range(0, fW):
-                dw[:, c, ih, iw] = np.sum(dout_reshaped * x_pad[:, c, ih:(ih + out_H * stride):stride, iw:(iw + out_W * stride):stride], axis=(1, 2, 3))
+    dout_c_reshaped = np.asarray([dout for c in range(C)]).transpose(2, 1, 0, 3, 4) # (F, N, C, out_H, out_W)
+    for ih in range(0, fH):
+        for iw in range(0, fW):
+            # For every filter's channel, grab the x_pad values (N, C, H', W'). Sum over N, H', W' to get (F, C) weights
+            dw[:, :, ih, iw] = np.sum(dout_c_reshaped * x_pad[:, :, ih:(ih + out_H * stride):stride, iw:(iw + out_W * stride):stride], axis=(1, 3, 4))
 
     dx = np.zeros((N, C, H, W))
     for n in range(N):
