@@ -128,19 +128,9 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     N, D = x.shape
     running_mean = bn_param.get('running_mean', np.zeros(D, dtype=x.dtype))
     running_var = bn_param.get('running_var', np.zeros(D, dtype=x.dtype))
-
     out, cache = None, None
-    N, D = x.shape
-
     if mode == 'train':
-        dim_means = np.mean(x, axis=0) # means for each dimension across all sample
-        x_minus_means = x - dim_means
-        dim_vars = (np.sum(x_minus_means ** 2, axis = 0) / N) + eps # variance for each dimension
-        sqrt_idimvars = 1 / np.sqrt(dim_vars)
-        normalized = x_minus_means * sqrt_idimvars
-        out = gamma * normalized + beta
-
-        # 1) Calculate mean on each dimension across all samples
+        # 1) Calculate mean on each dimension across all samples. (D,)
         mu = np.mean(x, axis=0)
 
         # 2) Subtract mean vector of every sample
@@ -381,11 +371,11 @@ def conv_backward_naive(dout, cache):
     db = np.sum(dout, axis=(0, 2, 3))
 
     dw = np.zeros((F, C, fH, fW))
-    for f in range(0, F):
-        for c in range(0, C):
-            for ih in range(0, fH):
-                for iw in range(0, fW):
-                    dw[f, c, ih, iw] = np.sum(dout[:, f, :, :] * x_pad[:, c, ih:(ih + out_H * stride):stride, iw:(iw + out_W * stride):stride])
+    dout_reshaped = dout.transpose((1, 0, 2, 3)).reshape(F, N, out_H, out_W)
+    for c in range(0, C):
+        for ih in range(0, fH):
+            for iw in range(0, fW):
+                dw[:, c, ih, iw] = np.sum(dout_reshaped * x_pad[:, c, ih:(ih + out_H * stride):stride, iw:(iw + out_W * stride):stride], axis=(1, 2, 3))
 
     dx = np.zeros((N, C, H, W))
     for n in range(N):
@@ -494,26 +484,17 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
         old information is discarded completely at every time step, while
         momentum=1 means that new information is never incorporated. The
         default of momentum=0.9 should work well in most situations.
-      - running_mean: Array of shape (D,) giving running mean of features
-      - running_var Array of shape (D,) giving running variance of features
+      - running_mean: Array of shape (C,) giving running mean of features
+      - running_var Array of shape (C,) giving running variance of features
 
     Returns a tuple of:
     - out: Output data, of shape (N, C, H, W)
     - cache: Values needed for the backward pass
     """
-    out, cache = None, None
-
-    ###########################################################################
-    # TODO: Implement the forward pass for spatial batch normalization.       #
-    #                                                                         #
-    # HINT: You can implement spatial batch normalization using the vanilla   #
-    # version of batch normalization defined above. Your implementation should#
-    # be very short; ours is less than five lines.                            #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    N, C, H, W = x.shape
+    x_reshaped = x.transpose((0, 2, 3, 1)).reshape(N * H * W, C)
+    out_reshaped, cache = batchnorm_forward(x_reshaped, gamma, beta, bn_param)
+    out = out_reshaped.reshape(N, H, W, C).transpose(0, 3, 1, 2)
 
     return out, cache
 
@@ -531,19 +512,10 @@ def spatial_batchnorm_backward(dout, cache):
     - dgamma: Gradient with respect to scale parameter, of shape (C,)
     - dbeta: Gradient with respect to shift parameter, of shape (C,)
     """
-    dx, dgamma, dbeta = None, None, None
-
-    ###########################################################################
-    # TODO: Implement the backward pass for spatial batch normalization.      #
-    #                                                                         #
-    # HINT: You can implement spatial batch normalization using the vanilla   #
-    # version of batch normalization defined above. Your implementation should#
-    # be very short; ours is less than five lines.                            #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    N, C, H, W = dout.shape
+    dout_reshaped = dout.transpose((0, 2, 3, 1)).reshape(N * H * W, C)
+    dx_reshaped, dgamma, dbeta = batchnorm_backward_alt(dout_reshaped, cache)
+    dx = dx_reshaped.reshape(N, H, W, C).transpose(0, 3, 1, 2)
 
     return dx, dgamma, dbeta
 
