@@ -379,6 +379,7 @@ def conv_backward_naive(dout, cache):
             x_pad_reshaped = x_pad[:, :, ih:(ih + out_H * stride):stride, iw:(iw + out_W * stride):stride].transpose(1, 0, 2, 3).reshape(C, -1)
             dw[:, :, ih, iw] = dout_reshaped.dot(x_pad_reshaped.T)
 
+    # A dx value in a channel is the sum of the associated output value across all filters mulitplied by all the filters in the weights in a channel
     dx_pad = np.zeros(x_pad.shape)
     for oh in range(out_H):
         start_h = oh * stride
