@@ -303,11 +303,11 @@ def conv_forward_naive(x, w, b, conv_param):
 
     The input consists of N data points, each with C channels, height H and
     width W. We convolve each input with F different filters, where each filter
-    spans all C channels and has height HH and width HH.
+    spans all C channels and has height fH and width fW.
 
     Input:
     - x: Input data of shape (N, C, H, W)
-    - w: Filter weights of shape (F, C, HH, WW)
+    - w: Filter weights of shape (F, C, fH, fW)
     - b: Biases, of shape (F,)
     - conv_param: A dictionary with the following keys:
       - 'stride': The number of pixels between adjacent receptive fields in the
@@ -315,12 +315,12 @@ def conv_forward_naive(x, w, b, conv_param):
       - 'pad': The number of pixels that will be used to zero-pad the input.
 
     Returns a tuple of:
-    - out: Output data, of shape (N, F, H', W') where H' and W' are given by
-      H' = 1 + (H + 2 * pad - HH) / stride
-      W' = 1 + (W + 2 * pad - WW) / stride
+    - out: Output data, of shape (N, F, out_H, out_W) where out_H, out_W are given by
+      out_H = 1 + (H + 2 * pad - fH) / stride
+      out_W = 1 + (W + 2 * pad - fW) / stride
     - cache: (x, w, b, conv_param)
     """
-    F, C, HH, WW = w.shape
+    F, C, fH, fW = w.shape
     pad = conv_param['pad']
     stride = conv_param['stride']
 
@@ -328,8 +328,8 @@ def conv_forward_naive(x, w, b, conv_param):
     X = np.pad(x, ((0,), (0,), (pad,), (pad,)), 'constant', constant_values=0)
     N, C, H, W = X.shape
 
-    out_H = int(1 + (H - HH) / stride)
-    out_W = int(1 + (W - WW) / stride)
+    out_H = int(1 + (H - fH) / stride)
+    out_W = int(1 + (W - fW) / stride)
     out = np.zeros((N, F, out_H, out_W))
 
     for fi, weights in enumerate(w):
@@ -337,7 +337,7 @@ def conv_forward_naive(x, w, b, conv_param):
             start_h = fh * stride
             for fw in range(out_W):
                 start_w = fw * stride
-                filter_values = X[:, :, start_h:start_h + HH, start_w:start_w + WW] * weights
+                filter_values = X[:, :, start_h:start_h + fH, start_w:start_w + fW] * weights
                 # Each sample is a sum across all values in the filter. Sum all axis except for axis 0: N
                 out[:, fi, fh, fw] = np.sum(filter_values, axis=(1, 2, 3)) + b[fi]
 
@@ -350,12 +350,12 @@ def conv_backward_naive(dout, cache):
     A naive implementation of the backward pass for a convolutional layer.
 
     Inputs:
-    - dout: Upstream derivatives of shape (N, F, H', W')
+    - dout: Upstream derivatives of shape (N, F, out_H, out_W)
     - cache: A tuple of (x, w, b, conv_param) as in conv_forward_naive
 
     Returns a tuple of:
     - dx: Gradient with respect to x. (N, C, H, W)
-    - dw: Gradient with respect to w. (F, C, HH, WW)
+    - dw: Gradient with respect to w. (F, C, fH, fW)
     - db: Gradient with respect to b. (F, )
     """
     x, w, b, conv_param = cache
@@ -367,31 +367,27 @@ def conv_backward_naive(dout, cache):
     N, F, out_H, out_W = dout.shape
     F, C, fH, fW = w.shape
 
-    # Drop axis 0 and (H', W') to get shape (F, )
+    # Drop axis 0 and (out_H, out_W) to get shape (F, )
     db = np.sum(dout, axis=(0, 2, 3))
 
     dw = np.zeros((F, C, fH, fW))
-    dout_c_reshaped = np.asarray([dout for c in range(C)]).transpose(2, 1, 0, 3, 4) # (F, N, C, out_H, out_W)
     for ih in range(0, fH):
         for iw in range(0, fW):
-            # For every filter's channel, grab the x_pad values (N, C, H', W'). Sum over N, H', W' to get (F, C) weights
-            dw[:, :, ih, iw] = np.sum(dout_c_reshaped * x_pad[:, :, ih:(ih + out_H * stride):stride, iw:(iw + out_W * stride):stride], axis=(1, 3, 4))
+            # In this loop, filter-windowed x_pad has shape (N, C, out_H, out_W) and dout has (N, F, out_H, out_W). We want (F, C) weight values.
+            # So, reshape x_pad to (C, N*out_H*out_W) and dout to (F, N*out_H*out_W)
+            dout_reshaped = dout.transpose(1, 0, 2, 3).reshape(F, -1)
+            x_pad_reshaped = x_pad[:, :, ih:(ih + out_H * stride):stride, iw:(iw + out_W * stride):stride].transpose(1, 0, 2, 3).reshape(C, -1)
+            dw[:, :, ih, iw] = dout_reshaped.dot(x_pad_reshaped.T)
 
-    dx = np.zeros((N, C, H, W))
-    for n in range(N):
-        for xh in range(H):
-            for xw in range(W):
-                for f in range(F):
-                    for oh in range(out_H):
-                        for ow in range(out_W):
-                            mask1 = np.zeros_like(w[f, :, :, :])
-                            mask2 = np.zeros_like(w[f, :, :, :])
-                            if 0 <= (xh + pad - oh * stride) < fH:
-                                mask1[:, xh + pad - oh * stride, :] = 1.0
-                            if 0 <= (xw + pad - ow * stride) < fW:
-                                mask2[:, :, xw + pad - ow * stride] = 1.0
-                            w_masked = np.sum(w[f, :, :, :] * mask1 * mask2, axis=(1, 2))
-                            dx[n, :, xh, xw] += dout[n, f, oh, ow] * w_masked
+    dx_pad = np.zeros(x_pad.shape)
+    for oh in range(out_H):
+        start_h = oh * stride
+        for ow in range(out_W):
+            start_w = ow * stride
+            # In this loop, dout has shape (N, F) and w has reshape (F, C*fH*fW). Output (N, C*FH*fW)
+            dx_pad[:, :, start_h:start_h + fH, start_w:start_w + fW] = dout[:, :, oh, ow].dot(w.reshape(F, -1)).reshape(N, C, fH, fW)
+
+    dx = dx_pad[:, :, pad:-pad, pad:-pad]
 
     return dx, dw, db
 
@@ -416,8 +412,8 @@ def max_pool_forward_naive(x, pool_param):
     pool_H = pool_param['pool_height']
     pool_W = pool_param['pool_width']
     stride = pool_param['stride']
-    out_W = int((W - pool_W) / stride + 1)
     out_H = int((H - pool_H) / stride + 1)
+    out_W = int((W - pool_W) / stride + 1)
 
     out = np.zeros((N, C, out_H, out_W))
     mask = np.zeros((N, C, H, W), dtype=int)
@@ -441,13 +437,13 @@ def max_pool_backward_naive(dout, cache):
     A naive implementation of the backward pass for a max pooling layer.
 
     Inputs:
-    - dout: Upstream derivatives of shape (N, C, out_W, out_H)
+    - dout: Upstream derivatives of shape (N, C, out_H, out_W)
     - cache: A tuple of (x, pool_param) as in the forward pass.
 
     Returns:
     - dx: Gradient with respect to x
     """
-    N, C, out_W, out_H = dout.shape
+    N, C, out_H, out_W = dout.shape
     x, pool_param = cache
     pool_H = pool_param['pool_height']
     pool_W = pool_param['pool_width']
