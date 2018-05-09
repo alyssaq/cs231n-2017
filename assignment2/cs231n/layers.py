@@ -325,21 +325,21 @@ def conv_forward_naive(x, w, b, conv_param):
     stride = conv_param['stride']
 
     # Pad the (w,h) tensor input
-    X = np.pad(x, ((0,), (0,), (pad,), (pad,)), 'constant', constant_values=0)
-    N, C, H, W = X.shape
+    x_pad = np.pad(x, ((0,), (0,), (pad,), (pad,)), 'constant', constant_values=0)
+    N, C, H, W = x_pad.shape
 
     out_H = int(1 + (H - fH) / stride)
     out_W = int(1 + (W - fW) / stride)
     out = np.zeros((N, F, out_H, out_W))
 
-    for fi, weights in enumerate(w):
-        for fh in range(out_H):
-            start_h = fh * stride
-            for fw in range(out_W):
-                start_w = fw * stride
-                filter_values = X[:, :, start_h:start_h + fH, start_w:start_w + fW] * weights
-                # Each sample is a sum across all values in the filter. Sum all axis except for axis 0: N
-                out[:, fi, fh, fw] = np.sum(filter_values, axis=(1, 2, 3)) + b[fi]
+    weights_reshaped = w.reshape(F, -1).T
+    for fh in range(out_H):
+        start_h = fh * stride
+        for fw in range(out_W):
+            start_w = fw * stride
+            # In this loop, filter-windowed x_pad has shape (N, C, fH, fW) and weights has (F, C*fH*fW). Output (N, F)
+            out_reshaped = x_pad[:, :, start_h:start_h + fH, start_w:start_w + fW].reshape(N, -1).dot(weights_reshaped)
+            out[:, :, fh, fw] = out_reshaped + b  # b (F, ) is brodcasted to all N samples
 
     cache = (x, w, b, conv_param)
     return out, cache
